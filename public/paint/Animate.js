@@ -214,6 +214,17 @@ export class Animate extends AnimateElement {
         this.socket = new Socket();
 
         this.stroke = [];
+
+        this.socket.onInitalJoin = msg => {
+            const layer = this.createLayer();
+            const img = new Image();
+            img.onload = () => {
+                layer.setSize(img.width, img.height);
+                layer.context.drawImage(img, 0, 0);
+                this.drawAllLayers();
+            }
+            img.src = msg.canvas;
+        }
         
         this.socket.connect().then(() => {
             this.socket.join(location.pathname);
@@ -227,6 +238,11 @@ export class Animate extends AnimateElement {
                     stroke: this.stroke,
                     drawing: this.canvas.interacting
                 });
+
+                if(this.socket.isHost()) {
+                    const canv = this.canvas.canvas.toDataURL();
+                    this.socket.sendCanvas(canv);
+                }
 
                 this.stroke = [];
             }, 1000 / 30);

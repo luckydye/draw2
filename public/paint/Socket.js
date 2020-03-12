@@ -141,7 +141,14 @@ export default class SocketClient {
             timestamp: Date.now(),
             state: state,
         });
-    }
+	}
+	
+	sendCanvas(dataUrl) {
+		this.client.emit('user.canvas', {
+            timestamp: Date.now(),
+            canvas: dataUrl,
+        });
+	}
 
 	init() {
 		this.events = {
@@ -175,9 +182,21 @@ export default class SocketClient {
 				this.host = msg.host;
 				this.roomState = msg;
 			},
+
+			'room.canvas': msg => {
+				if(msg.canvas) {
+					this.onInitalJoin({
+						canvas: msg.canvas
+					})
+				}
+			},
 		}
 
 		this.initListeners(this.events);
+	}
+
+	onInitalJoin(msg) {
+
 	}
 
 	initListeners(events) {

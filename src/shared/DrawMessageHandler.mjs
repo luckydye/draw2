@@ -12,6 +12,7 @@ export default class WatchMessageHandler extends MessageHandler {
         return Object.assign(super.messageTypes, {
             'ping': msg => { },
             'user.state': msg => this.filterRequest(msg, () => this.handleUserState(msg)),
+            'user.canvas': msg => this.filterRequest(msg, () => this.handleUserCanvas(msg)),
         });
     }
 
@@ -22,6 +23,13 @@ export default class WatchMessageHandler extends MessageHandler {
             if (!room.state.hostonly || (room.state.hostonly && room.state.host === message.socket.uid)) {
                 callback();
             }
+        }
+    }
+
+    handleUserCanvas(msg) {
+        const room = this.getRoom(msg.socket.room);
+        if(room) {
+            room.state.canvas = msg.data.canvas;
         }
     }
 
@@ -54,6 +62,7 @@ export default class WatchMessageHandler extends MessageHandler {
 
         message.reply(new Message('join', { id: message.socket.uid }));
         message.reply(new Message('room.state', room.getState()));
+        message.reply(new Message('room.canvas', { canvas: room.state.canvas }));
     }
 
     handleLeaveMessage(message) {
