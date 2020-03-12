@@ -18,14 +18,25 @@ export default class WatchRoom extends Room {
     }
 
     getState() {
-        return this.state;
+        const state = {
+            host: this.state.host,
+            hostonly: this.state.hostonly,
+        };
+
+        state.users = [];
+        for(let [uid, user] of this.userlist) {
+            state.users.push({
+                uid: uid,
+                tool: user.tool,
+                cursor: user.cursor,
+                stroke: user.stroke,
+            });
+        }
+
+        return state;
     }
 
     socketConnected(socket) {
-        if (this.userlist.size < 1 && this.queue.length > 0) {
-            const vid = this.queue[0];
-            this.loadVideo(vid.service, vid.id);
-        }
 
         this.userlist.set(socket.uid, {
             username: socket.username,

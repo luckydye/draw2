@@ -14,15 +14,18 @@ function clamp(min, max, value) {
     return Math.min(Math.max(min, value), max);
 }
 
-class CanvasDrawEvent extends Event {
-    constructor() {
-        super('canvas.draw');
-    }
-}
-
 class CanvasStrokeEvent extends Event {
     constructor() {
         super('canvas.stroke');
+    }
+}
+
+class CanvasDrawEvent extends Event {
+    constructor(x, y) {
+        super('canvas.draw');
+
+        this.x = x;
+        this.y = y;
     }
 }
 
@@ -137,6 +140,8 @@ export class AnimateCanvas extends AnimateElement {
                 this.draw(x, y);
                 this.lastchange = Date.now();
                 this.changes = true;
+                
+                this.dispatchEvent(new CanvasDrawEvent(x, y));
             }
         }
 
@@ -168,6 +173,12 @@ export class AnimateCanvas extends AnimateElement {
         }
 
         const pointerMove = e => {
+
+            const canvasBounds = this.canvas.getBoundingClientRect();
+            this.cursor = [
+                (e.x - canvasBounds.left) / this.scale, 
+                (e.y - canvasBounds.top) / this.scale
+            ];
 
             const pointerCount = this.pointers.size;
             const pointerId = e.pointerId;
@@ -254,12 +265,10 @@ export class AnimateCanvas extends AnimateElement {
         this.canvas = this.shadowRoot.querySelector('canvas#canvas');
         this.context = this.canvas.getContext("2d", { 
 			desynchronized: true,
-			preserveDrawingBuffer: true
 		});
         this.overlay = this.shadowRoot.querySelector('canvas#overlay');
         this.overlayContext = this.overlay.getContext("2d", {
 			desynchronized: true,
-			preserveDrawingBuffer: true
 		});
 
         this.setSize(this.defaultWidth, this.defaultHeight);
@@ -360,13 +369,13 @@ export class AnimateCanvas extends AnimateElement {
 
         this.clear();
         this.drawLayer(this.layer);
-
-        this.dispatchEvent(new CanvasDrawEvent());
     }
 
     drawLayer(layer) {
         if(layer instanceof Layer && !layer.hidden) {
-            this.context.drawImage(layer.canvas, 0, 0);
+            if(layer.canvas.width + layer.canvas.height > 0) {
+                this.context.drawImage(layer.canvas, 0, 0);
+            }
         }
     }
 

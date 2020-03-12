@@ -60,8 +60,6 @@ class HotelClient {
 
 	onError(e) {
 		console.log('[WebSocket] error on socket', e);
-
-		displayReloadPrompt();
 	}
 
 	onClose(e) {
@@ -119,7 +117,9 @@ class HotelClient {
 
 export default class SocketClient {
 
-	get username() { return "Unknown User"; }
+	get username() {
+		return "Unknown User";
+	}
 
 	isHost() {
 		return this.id === this.host;
@@ -127,26 +127,23 @@ export default class SocketClient {
 
 	constructor() {
 		this.client = new HotelClient();
-        this.client.connect();
-        
-		this.updaterate = 500;
 		this.room = null;
-    }
+		this.roomState = {};
+	}
+	
+	connect() {
+		this.init();
+		return this.client.connect();
+	}
     
-    sendUpdate() {
+    sendUpdate(state) {
         this.client.emit('user.state', {
             timestamp: Date.now(),
-            
+            state: state,
         });
-
-        if(this.client.connected) {
-            setTimeout(() => this.sendUpdate(), this.updaterate);
-        }
     }
 
 	init() {
-		this.sendUpdate();
-
 		this.events = {
 
 			'disconnect': () => {
@@ -162,27 +159,21 @@ export default class SocketClient {
 							reconnecting = null;
 						}
 					}, 1000);
-				} else {
-					displayReloadPrompt();
 				}
 			},
 
 			'join': msg => {
 				this.id = msg.id;
+				console.log('Joined');
 			},
 
 			'message': msg => {
-				
+				console.log(msg);
 			},
 
 			'room.state': msg => {
 				this.host = msg.host;
-
-				
-			},
-
-			'room.list': msg => {
-				
+				this.roomState = msg;
 			},
 		}
 
@@ -201,9 +192,9 @@ export default class SocketClient {
 		this.client.emit(event, msg);
 	}
 
-	connect(roomId) {
+	join(roomId) {
 		const socket = this.client;
-
+	
 		this.room = roomId;
 
 		socket.emit('join', {
@@ -211,7 +202,7 @@ export default class SocketClient {
 			username: this.username
 		});
 
-		displayNotification("Connected", 2500);
+		displayNotification("Joining", 2500);
 	}
 
 }

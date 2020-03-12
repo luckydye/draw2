@@ -12,6 +12,7 @@ import { Eraser } from './tools/Eraser.js';
 import { Create } from './tools/Create.js';
 import { Forward } from './tools/Forward.js';
 import { html } from '/node_modules/lit-html/lit-html.js';
+import Socket from './Socket.js';
 
 customElements.define('an-canvas', AnimateCanvas);
 customElements.define('an-toolbar', AnimateToolbar);
@@ -144,6 +145,7 @@ export class Animate extends AnimateElement {
     }
 
     setup() {
+
         this.createLayer();
 
         this.addTools(this.tools);
@@ -204,6 +206,59 @@ export class Animate extends AnimateElement {
         this.toolbar.addEventListener('tool.select', () => makeCursor());
         
         makeCursor();
+        
+        this.canvas.addEventListener('canvas.draw', e => {
+            this.stroke.push([e.x, e.y]);
+        });
+
+        this.socket = new Socket();
+
+        this.stroke = [];
+        
+        this.socket.connect().then(() => {
+            this.socket.join(location.pathname);
+
+            setInterval(() => {
+                this.drawUserCursors(this.socket.roomState.users);
+
+                this.socket.sendUpdate({
+                    cursor: this.canvas.cursor,
+                    tool: this.activeTool,
+                    stroke: this.stroke,
+                    drawing: this.canvas.interacting
+                });
+
+                this.stroke = [];
+            }, 1000 / 30);
+        });
+    }
+
+    drawUserCursors(users) {
+        const overlay = this.canvas.overlayContext;
+
+        overlay.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
+
+        overlay.lineWidth = 3;
+
+        for(let usr of (users || [])) {
+            if(usr.uid !== this.socket.id) {
+                if(usr.cursor) {
+                    overlay.strokeStyle = `rgb(${usr.tool.color[0]}, ${usr.tool.color[1]}, ${usr.tool.color[2]})`;
+                    overlay.beginPath();
+                    overlay.arc(usr.cursor[0], usr.cursor[1], 8, 0, 2 * Math.PI);
+                    overlay.stroke();
+                }
+    
+                if(usr.stroke.length > 0) {
+                    this.canvas.currentLine = []
+                    this.canvas.brush = usr.tool;
+                    for(let pos of usr.stroke) {
+                        this.canvas.draw(pos[0], pos[1]);
+                    }
+                    this.canvas.brush = this.activeTool;
+                }
+            }
+        }
     }
 
     pushState() {

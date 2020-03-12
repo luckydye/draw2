@@ -1,5 +1,4 @@
 import { Animate } from "./paint/Animate.js";
-import Socket from './Socket.js';
 
 customElements.define('paint-canvas', Animate);
 

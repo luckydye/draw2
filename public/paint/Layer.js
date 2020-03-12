@@ -26,7 +26,9 @@ export class Layer {
         const temp = this.createBuffer();
         this.canvas.width = width;
         this.canvas.height = height;
-        this.context.drawImage(temp, 0, 0);
+        if(this.canvas.width + this.canvas.height > 0) {
+            this.context.drawImage(temp, 0, 0);
+        }
     }
 
     createBuffer() {
@@ -34,7 +36,9 @@ export class Layer {
         const context = canvas.getContext("2d");
         canvas.width = this.canvas.width;
         canvas.height = this.canvas.height;
-        context.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
+        if(canvas.width + canvas.height > 0) {
+            context.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
+        }
         return canvas;
     }
 
