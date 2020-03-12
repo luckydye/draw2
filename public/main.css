@@ -1,0 +1,14 @@
+:root {
+    --interface-background: hsla(0, 0%, 80%, 0.65);
+    --canvas-background: #eee;
+}
+
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: sans-serif;
+    overflow: hidden;
+    contain: strict;
+    touch-action: none;
+    overscroll-behavior: none;
+}

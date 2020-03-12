@@ -1,0 +1,27 @@
+{
+  "name": "draw2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "module": "index.mjs",
+  "scripts": {
+    "start": "node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luckydye/draw2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/luckydye/draw2/issues"
+  },
+  "homepage": "https://github.com/luckydye/draw2#readme",
+  "dependencies": {
+    "@uncut/hotel": "git+ssh://git@github.com/luckydye/hotel.git",
+    "express": "^4.17.1",
+    "lit-html": "^1.1.2",
+    "w": "^1.1.0"
+  }
+}
