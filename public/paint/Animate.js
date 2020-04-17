@@ -1,22 +1,16 @@
 import { AnimateElement } from './components/AnimateElement.js';
 import { AnimateCanvas } from './components/AnimateCanvas.js';
 import { AnimateToolbar } from './components/AnimateToolbar.js';
-import { AnimateLayerlist } from './components/AnimateLayerlist.js';
 import { AnimateColorPicker } from './components/AnimateColorPicker.js';
 import { AnimateBrushSettings } from './components/AnimateBrushSettings.js';
 import { Layer } from './Layer.js';
-import { Back } from './tools/Back.js';
-import { Save } from './tools/Save.js';
 import { Brush } from './tools/Brush.js';
 import { Eraser } from './tools/Eraser.js';
-import { Create } from './tools/Create.js';
-import { Forward } from './tools/Forward.js';
 import { html } from '/node_modules/lit-html/lit-html.js';
 import Socket from './Socket.js';
 
 customElements.define('an-canvas', AnimateCanvas);
 customElements.define('an-toolbar', AnimateToolbar);
-customElements.define('an-layerlist', AnimateLayerlist);
 customElements.define('an-colorpicker', AnimateColorPicker);
 customElements.define('an-brushsettings', AnimateBrushSettings);
 
@@ -58,33 +52,32 @@ export class Animate extends AnimateElement {
             <style>
                 .interface {
                     display: grid;
-                    grid-auto-flow: row;
-                    grid-template-rows: auto;
+                    grid-template-columns: auto 1fr auto auto;
                     align-content: flex-start;
                     align-items: flex-start;
                     justify-content: flex-start;
                     grid-gap: 15px;
-                    position: fixed;
-                    top: 0;
-                    right: 0;
                     z-index: 100;
                     padding: 20px;
                     box-sizing: border-box;
                     pointer-events: none;
+                    width: 100%;
                 }
 
                 an-brushsettings,
                 an-toolbar,
-                an-layerlist,
                 an-colorpicker {
                     z-index: 100;
-                    overflow: hidden;
+                    user-select: none;
+                    pointer-events: all;
+                }
+
+                an-brushsettings,
+                an-toolbar {
                     border-radius: 4px;
                     background: var(--interface-background);
                     backdrop-filter: blur(5px);
-                    user-select: none;
                     box-shadow: 0px 1px 5px rgba(50, 50, 50, 0.033);
-                    pointer-events: all;
                 }
 
                 an-canvas {
@@ -98,18 +91,12 @@ export class Animate extends AnimateElement {
                     padding: 0 100px 0 0;
                     box-sizing: border-box;
                 }
-
-                an-toolbar {
-                    position: fixed;
-                    left: 20px;
-                    top: 20px;
-                }
             </style>
             <div class="interface">
                 <an-toolbar></an-toolbar>
+                <div class="canvas-title"></div>
                 <an-colorpicker></an-colorpicker>
                 <an-brushsettings></an-brushsettings>
-                <an-layerlist></an-layerlist>
             </div>
             <an-canvas id="viewport"></an-canvas>
         `;
@@ -124,10 +111,6 @@ export class Animate extends AnimateElement {
         this.tools = [
             new Brush(),
             new Eraser(),
-            new Create(this),
-            new Back(this),
-            new Forward(this),
-            new Save(this),
         ];
 
         this.layers = [];
@@ -137,7 +120,6 @@ export class Animate extends AnimateElement {
 
         this.canvas = this.shadowRoot.querySelector('an-canvas');
         this.toolbar = this.shadowRoot.querySelector('an-toolbar');
-        this.layerlist = this.shadowRoot.querySelector('an-layerlist');
         this.colorpicker = this.shadowRoot.querySelector('an-colorpicker');
         this.brushsettings = this.shadowRoot.querySelector('an-brushsettings');
 
@@ -165,32 +147,10 @@ export class Animate extends AnimateElement {
             if(this.activeTool instanceof Brush) this.activeTool.color = color;
         });
 
-        this.layerlist.addEventListener('layer.select', e => this.selectLayer(e.layer));
-        this.layerlist.addEventListener('layer.change', e => this.selectLayer(e.layer));
-        this.layerlist.addEventListener('layer.add', e => this.createLayer());
-        this.layerlist.addEventListener('layer.move', e => this.moveLayer(e.moved.from, e.moved.to));
-        this.layerlist.addEventListener('layer.delete', e => this.deleteLayer(e.layer));
-
-        this.canvas.addEventListener('canvas.stroke', e => this.pushState());
         this.toolbar.addEventListener('tool.select', e => this.selectTool(e.tool));
-
-        window.addEventListener('keydown', e => {
-            if(e.key.match("z") && e.ctrlKey) {
-                this.back();
-            }
-            if(e.key.match("y") && e.ctrlKey) {
-                this.forward();
-            }
-            if(e.key.match("s") && e.ctrlKey) {
-                this.saveToFile();
-                e.preventDefault();
-            }
-        });
 
         this.selectTool(this.tools[0]);
         this.selectLayer(this.layers[0]);
-
-        this.clearHistory();
 
         const makeCursor = () => {
             const anCanvas = this.shadowRoot.querySelector('an-canvas');
@@ -277,29 +237,6 @@ export class Animate extends AnimateElement {
         }
     }
 
-    pushState() {
-        if(this.historyCursor > 0) {
-            this.history.splice(0, this.historyCursor);
-            this.historyCursor = 0;
-        }
-
-        const state = new State({
-            layer: this.activeLayer,
-            buffer: this.activeLayer.createBuffer()
-        });
-
-        this.history.unshift(state);
-
-        if(this.history.length > 20) {
-            this.history.pop();
-        }
-    }
-
-    clearHistory() {
-        this.history = [];
-        this.pushState();
-    }
-
     selectTool(tool) {
         this.activeTool = tool;
 
@@ -318,7 +255,6 @@ export class Animate extends AnimateElement {
         this.activeLayer = layer;
 
         this.canvas.setActiveLayer(this.activeLayer);
-        this.layerlist.onLayerSelect(this.activeLayer);
 
         this.drawAllLayers();
     }
@@ -329,35 +265,9 @@ export class Animate extends AnimateElement {
         }
     }
 
-    moveLayer(from, to) {
-        const temp = this.layers.splice(from, 1);
-        const part = this.layers.splice(to);
-
-        this.layers.push(...temp, ...part);
-
-        this.layerlist.setLayers(this.layers);
-        
-        this.selectLayer(this.layers[to]);
-    }
-
-    deleteLayer(layer) {
-        if(this.layers.length < 2) return;
-
-        const index = this.layers.indexOf(layer);
-        this.layers.splice(index, 1);
-        this.layerlist.setLayers(this.layers);
-
-        if(this.activeLayer === layer) {
-            this.selectLayer(this.layers[index == 0 ? 0 : index-1]);
-        } else {
-            this.selectLayer(this.activeLayer);
-        }
-    }
-
     createLayer() {
         const layer = new Layer();
         this.layers.unshift(layer);
-        this.layerlist.setLayers(this.layers);
         this.selectLayer(layer);
         return layer;
     }
@@ -374,11 +284,6 @@ export class Animate extends AnimateElement {
         this.layers.reverse();
     }
 
-    drawIsolatedLayer(layer) {
-        this.canvas.clear();
-        this.canvas.drawLayer(layer);
-    }
-
     setResolution(width, height) {
         this.canvas.setSize(width, height);
         this.drawAllLayers();
@@ -389,29 +294,6 @@ export class Animate extends AnimateElement {
         link.href = this.canvas.canvas.toDataURL('image/png');
         link.download = "image.png";
         link.click();
-    }
-
-    back() {
-        const state = this.history[this.historyCursor+1];
-
-        if(state) {
-            state.restore();
-            this.drawAllLayers();
-
-            this.historyCursor++;
-        }
-    }
-
-    forward() {
-        this.historyCursor--;
-        const state = this.history[this.historyCursor];
-
-        if(state) {
-            state.restore();
-            this.drawAllLayers();
-        } else {
-            this.historyCursor = 0;
-        }
     }
 
 }

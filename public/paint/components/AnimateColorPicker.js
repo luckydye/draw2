@@ -92,23 +92,55 @@ class ColorPickEvent extends Event {
 
 export class AnimateColorPicker extends AnimateElement {
 
-    static template() {
+    static template(self) {
         return html`
             <style>
                 :host {
-                    width: 200px;
-                    height: 120px;
                     display: block;
+                    padding: 2px;
                 }
-                canvas {
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 3px;
-                    overflow: hidden;
+                .presets {
+                    display: grid;
+                    grid-auto-flow: column;
+                    grid-gap: 9px;
+                }
+                .preset {
+                    width: 25px;
+                    height: 25px;
+                    border: 2px solid var(--interface-background);
+                    border-radius: 50%;
+                    background: var(--color);
+                    transition: .1s ease-out;
+                    cursor: pointer;
+                }
+                .preset:hover {
+                    transform: scale(1.05);
+                }
+                .preset[selected] {
+                    transform: translateY(4px);
                 }
             </style>
-            <canvas></canvas>
+            <div class="presets"></div>
         `;
+    }
+
+    setPresets(presets = []) {
+        const presetsElement = this.shadowRoot.querySelector('.presets');
+
+        this.presets = presets;
+
+        for(let preset of presets) {
+
+            const presetDiv = document.createElement('div');
+            presetDiv.onclick = () => {
+                this.setHSL(preset);
+            }
+            presetDiv.className = "preset";
+            presetDiv.setAttribute('color', preset.join(','));
+            presetDiv.style.setProperty('--color', `hsl(${preset[0] * 360}, ${preset[1] * 100}%, ${preset[2] * 100}%)`);
+
+            presetsElement.appendChild(presetDiv);
+        }
     }
 
     get hsl() {
@@ -150,21 +182,16 @@ export class AnimateColorPicker extends AnimateElement {
     setRGB(rgb) {
         this.rgb = rgb;
 
-        this.x = this.saturation * this.canvas.width;
-        this.y = this.lightness * (this.canvas.height - 20);
-
-        this.drawHSL();
+        this.updateDisplay();
 
         this.dispatchEvent(new ColorPickEvent(this.rgb));
     }
 
     setHSL(hsl) {
+        
         this.hsl = hsl;
 
-        this.x = this.saturation * this.canvas.width;
-        this.y = this.lightness * (this.canvas.height - 20);
-
-        this.drawHSL();
+        this.updateDisplay();
 
         this.dispatchEvent(new ColorPickEvent(this.rgb));
     }
@@ -193,57 +220,17 @@ export class AnimateColorPicker extends AnimateElement {
         this.green = 0;
         this.blue = 0;
 
-        this.x = 0;
-        this.y = 0;
+        this.presets = [
+            [0, 0, 0],
+            [0, 0, 1],
+            [0.1, 0.6, 0.5],
+            [0.4, 0.6, 0.5],
+            [0.9, 0.6, 0.5]
+        ]
 
-        this.canvas = this.shadowRoot.querySelector('canvas');
-        this.context = this.canvas.getContext("2d");
+        this.setPresets(this.presets);
 
-        const pointerUp = e => {
-            this.dragging = false;
-        }
-
-        let box;
-
-        const pointerDown = e => {
-            this.dragging = true;
-
-            box = this.getBoundingClientRect();
-            this.pickColor(
-                e.clientX - box.x, 
-                e.clientY - box.y
-            );
-        }
-
-        const pointerMove = e => {
-            if(!this.dragging) return;
-
-            this.pickColor(
-                clamp(0, box.width - 1, e.clientX - box.x),
-                clamp(0, box.height - 1, e.clientY - box.y),
-            );
-        }
-
-        window.addEventListener('click', pointerUp);
-
-        if(!window.PointerEvent) {
-            this.canvas.addEventListener('touchstart', e => {
-                pointerDown(e.touches[0]);
-            })
-            window.addEventListener('touchend', e => {
-                pointerUp(e.touches[0]);
-            });
-            window.addEventListener('touchmove', e => {
-                pointerMove(e.touches[0]);
-            });
-        } else {
-            this.canvas.addEventListener('pointerdown', pointerDown)
-            window.addEventListener('pointerup', pointerUp);
-            window.addEventListener('pointercancel', pointerUp);
-            window.addEventListener('pointermove', pointerMove);
-        }
-
-        this.drawHSL();
+        this.updateDisplay();
     }
 
     pickColor(x, y) {
@@ -264,91 +251,25 @@ export class AnimateColorPicker extends AnimateElement {
             ];
             
             this.setRGB(color);
-
-            this.x = x;
-            this.y = y;
         }
 
-        this.drawHSL();
+        this.updateDisplay();
     }
 
-    drawHSL() {
-        if(this.clientWidth && this.clientHeight) {
-            this.canvas.width = this.clientWidth;
-            this.canvas.height = this.clientHeight;
+    updateDisplay() {
+        const presets = this.shadowRoot.querySelectorAll('.preset');
+
+        const hsl = this.hsl.map(v => v.toFixed(1));
+
+        for(let preset of presets) {
+            preset.removeAttribute('selected');
+
+            const presetHSL = preset.getAttribute('color').split(',').map(v => parseFloat(v).toFixed(1));
+
+            if(presetHSL.join(',') == hsl.join(',')) {
+                preset.setAttribute('selected', '');
+            }
         }
-
-        const width = this.canvas.width;
-        const height = this.canvas.height - 20;
-
-        // sl
-        const colorImageData = this.context.getImageData(0, 0, width, height);
-        const colorData = colorImageData.data;
-        this.colorImageData = colorData;
-
-        for(let i = 0; i < colorData.length; i += 4) {
-            const [x, y] = [
-                Math.floor((i / 4) % width),
-                Math.floor((i / 4) / width)
-            ];
-
-            const cx = (x / width);
-            const cy = (y / height);
-
-            const rgb = hsl2rgb(this.hue, cx, cy);
-
-            colorData[i] = rgb[0];
-            colorData[i+1] = rgb[1];
-            colorData[i+2] = rgb[2];
-            colorData[i+3] = 255;
-        }
-
-        this.context.putImageData(colorImageData, 0, 0);
-
-        // hue
-        const hueImageData = this.context.getImageData(0, height, width, 20);
-        const hueData = hueImageData.data;
-
-        for(let i = 0; i < hueData.length; i += 4) {
-            const [x, y] = [
-                Math.floor((i / 4) % width),
-                Math.floor((i / 4) / width)
-            ];
-
-            const rgb = hsl2rgb((x / width), 0.8, 0.5);
-
-            hueData[i] = rgb[0];
-            hueData[i+1] = rgb[1];
-            hueData[i+2] = rgb[2];
-            hueData[i+3] = 255;
-        }
-
-        this.context.putImageData(hueImageData, 0, height);
-
-        // cursor
-        this.context.beginPath();
-        this.context.lineWidth = 2;
-        this.context.strokeStyle = "white";
-        this.context.fillStyle = `rgba(${this.rgb[0]}, ${this.rgb[1]}, ${this.rgb[2]}, 255)`;
-        this.context.arc(
-            this.x, 
-            this.y,
-            10, 0, Math.PI * 2
-        );
-        this.context.fill();
-        this.context.stroke();
-
-        this.context.beginPath();
-        this.context.lineWidth = 2;
-        this.context.strokeStyle = "white";
-        this.context.fillStyle = `hsl(${this.hue * 360}, 100%, 50%)`;
-        this.context.arc(
-            this.hue * width,
-            height + 10, 
-            8, 0, Math.PI * 2
-        );
-        this.context.fill();
-        this.context.stroke();
     }
 
 }

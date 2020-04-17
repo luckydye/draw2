@@ -20,7 +20,7 @@ export class AnimateToolbar extends AnimateElement {
 
                 tools {
                     display: flex;
-                    flex-direction: column;
+                    flex-direction: row;
                 }
 
                 tool {
