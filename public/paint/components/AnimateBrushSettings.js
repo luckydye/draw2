@@ -70,11 +70,11 @@ export class AnimateBrushSettings extends AnimateElement {
             <tool>
                 <div class="property" title="Brush size">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path d="M16.21 4.16l4 4v-4zm4 12l-4 4h4zm-12 4l-4-4v4zm-4-12l4-4h-4zm12.95-.95c-2.73-2.73-7.17-2.73-9.9 0s-2.73 7.17 0 9.9 7.17 2.73 9.9 0 2.73-7.16 0-9.9zm-1.1 8.8c-2.13 2.13-5.57 2.13-7.7 0s-2.13-5.57 0-7.7 5.57-2.13 7.7 0 2.13 5.57 0 7.7z"/><path fill="none" d="M.21.16h24v24h-24z"/></svg>
-                    <input id="size" type="range" min="1" max="20" step="0.125" />
+                    <input id="size" type="range" min="2" max="20" step="0.125" />
                 </div>
                 <div class="property" title="Brush opacity">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="none" d="M24 0H0v24h24V0zm0 0H0v24h24V0zM0 24h24V0H0v24z"/><path d="M17.66 8L12 2.35 6.34 8C4.78 9.56 4 11.64 4 13.64s.78 4.11 2.34 5.67 3.61 2.35 5.66 2.35 4.1-.79 5.66-2.35S20 15.64 20 13.64 19.22 9.56 17.66 8zM6 14c.01-2 .62-3.27 1.76-4.4L12 5.27l4.24 4.38C17.38 10.77 17.99 12 18 14H6z"/></svg>
-                    <input id="opacity" type="range" min="0.01" max="0.5" step="0.0125" />
+                    <input id="opacity" type="range" min="0.01" max="1" step="0.0125" />
                 </div>
             </tool>
         `;
@@ -91,7 +91,7 @@ export class AnimateBrushSettings extends AnimateElement {
 
         const change = {
             size: sizeInput.valueAsNumber,
-            opacity: opacityInput.valueAsNumber / (sizeInput.valueAsNumber/10)
+            opacity: opacityInput.valueAsNumber / (sizeInput.valueAsNumber / 10)
         };
 
         this.dispatchEvent(new ToolChangeEvent(change));

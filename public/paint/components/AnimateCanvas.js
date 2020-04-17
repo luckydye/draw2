@@ -1,18 +1,6 @@
 import { html } from '/node_modules/lit-html/lit-html.js';
 import { AnimateElement } from './AnimateElement.js';
-import { Layer } from '../Layer.js';
-
-function distance(p1, p2) {
-    return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
-}
-
-function lerp(start, end, t) {
-    return start * (1 - t) + end * t;
-}
-
-function clamp(min, max, value) {
-    return Math.min(Math.max(min, value), max);
-}
+import './Canvas.js';
 
 class CanvasStrokeEvent extends Event {
     constructor() {
@@ -51,19 +39,21 @@ export class AnimateCanvas extends AnimateElement {
         return 1280;
     }
 
-    static template() {
+    static template(self) {
         return html`
             <style>
                 :host {
                     display: flex;
                     justify-content: center;
                     align-items: center;
+                    color: #fff;
 
                     --x: 0px;
                     --y: 0px;
                     --scale: 1;
                     --title: none;
                 }
+                draw-canvas,
                 canvas {
                     background: white;
                     box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.1);
@@ -81,7 +71,6 @@ export class AnimateCanvas extends AnimateElement {
                 }
                 .canvas-wrapper:before {
                     content: var(--title);
-                    color: #333;
                     font-size: 14px;
                     opacity: 0.5;
                     position: absolute;
@@ -90,7 +79,7 @@ export class AnimateCanvas extends AnimateElement {
                 }
             </style>
             <div class="canvas-wrapper">
-                <canvas id="canvas"></canvas>
+                <draw-canvas width="${self.defaultWidth}" height="${self.defaultHeight}"></draw-canvas>
                 <canvas id="overlay"></canvas>
             </div>
         `;
@@ -125,25 +114,10 @@ export class AnimateCanvas extends AnimateElement {
             { x: 0, y: 0, pointerId: <n> }
         */
         this.pointers = new Map();
-        
         this.interacting = false;
-
         this.currentLine = [];
 
         let lastdistance = 0;
-
-        const drawPointer = (px, py) => {
-            if(this.initialized && !this.locked) {
-                const box = this.canvas.getBoundingClientRect();
-                const x = (px - box.x) / this.scale;
-                const y = (py - box.y) / this.scale;
-                this.draw(x, y);
-                this.lastchange = Date.now();
-                this.changes = true;
-                
-                this.dispatchEvent(new CanvasDrawEvent(x, y));
-            }
-        }
 
         const pointerDown = e => {
             this.pointers.set(e.pointerId, e);
@@ -154,7 +128,6 @@ export class AnimateCanvas extends AnimateElement {
 
             if(this.pointers.size === 1 && (e.which === 1 || e.which == null)) {
                 this.interacting = true;
-                drawPointer(e.x, e.y);
             }
         }
 
@@ -173,6 +146,7 @@ export class AnimateCanvas extends AnimateElement {
         }
 
         const pointerMove = e => {
+            this.canvas.setBrush(this.brush);
 
             const canvasBounds = this.canvas.getBoundingClientRect();
             this.cursor = [
@@ -196,7 +170,7 @@ export class AnimateCanvas extends AnimateElement {
             }
 
             if(pointerCount === 1 && this.interacting) {
-                drawPointer(x, y);
+                // draw move
             }
 
             if(pointerCount === 2) {
@@ -217,41 +191,13 @@ export class AnimateCanvas extends AnimateElement {
         const wheelMove = e => {
             const dir = -Math.sign(e.deltaY);
             this.scaleCanvas(dir / 20);
+            this.canvas.setBrush(this.brush);
         }
 
-        if(!window.PointerEvent) {
-            // polyfill PointerEvents
-
-            const touchUp = e => {
-                if(e.touches.length == 0) {
-                    for(let pointer of this.pointers) {
-                        pointerUp(pointer[1]);
-                    }
-                }
-                for(let touch of e.touches) {
-                    pointerUp({ x: touch.clientX, y: touch.clientY, pointerId: touch.identifier });
-                }
-            }
-
-            window.addEventListener('touchend', touchUp);
-            window.addEventListener('touchcancel', touchUp);
-            this.addEventListener('touchstart', e => {
-                for(let touch of e.touches) {
-                    pointerDown({ x: touch.clientX, y: touch.clientY, pointerId: touch.identifier });
-                }
-            });
-            this.addEventListener('touchmove', e => {
-                for(let touch of e.touches) {
-                    pointerMove({ x: touch.clientX, y: touch.clientY, pointerId: touch.identifier });
-                }
-            });
-            
-        } else {
-            this.addEventListener('pointerdown', pointerDown);
-            this.addEventListener('pointermove', pointerMove);
-            window.addEventListener('pointerup', pointerUp);
-            window.addEventListener('pointercancel', pointerUp);
-        }
+        this.addEventListener('pointerdown', pointerDown);
+        this.addEventListener('pointermove', pointerMove);
+        window.addEventListener('pointerup', pointerUp);
+        window.addEventListener('pointercancel', pointerUp);
 
         this.addEventListener('wheel', wheelMove);
         
@@ -262,14 +208,12 @@ export class AnimateCanvas extends AnimateElement {
     }
 
     initCanvas() {
-        this.canvas = this.shadowRoot.querySelector('canvas#canvas');
-        this.context = this.canvas.getContext("2d", { 
-			desynchronized: true,
-		});
+        this.canvas = this.shadowRoot.querySelector('draw-canvas');
+
         this.overlay = this.shadowRoot.querySelector('canvas#overlay');
         this.overlayContext = this.overlay.getContext("2d", {
 			desynchronized: true,
-		});
+        });
 
         this.setSize(this.defaultWidth, this.defaultHeight);
     }
@@ -309,88 +253,9 @@ export class AnimateCanvas extends AnimateElement {
         this.dispatchEvent(new CanvasScaleEvent());
     }
 
-    draw(x, y, pressure = 1) {
-        if(!this.layer || this.layer.hidden || this.locked) return;
-
-        const context = this.layer.context;
-        const brush = this.brush;
-
-        if(!brush) return;
-
-        context.save();
-
-        this.currentLine.unshift([x, y]);
-
-        const p1 = this.currentLine[0];
-        const p2 = this.currentLine[1];
-
-        this.layer.setSize(
-            clamp(this.layer.width, this.canvas.width, p1[0] + brush.size + 10),
-            clamp(this.layer.height, this.canvas.height, p1[1] + brush.size + 10),
-        );
-
-        const color = `rgba(
-            ${brush.color[0]}, 
-            ${brush.color[1]}, 
-            ${brush.color[2]}, 
-            ${brush.opacity}
-        )`;
-
-        if(this.currentLine.length > 1) {
-
-            const dist = distance(p1, p2);
-
-            const maxPoints = dist / brush.spacing;
-            let points = maxPoints;
-
-            while (points > 0) {
-
-                let sx = lerp(p2[0], p1[0], points / maxPoints);
-                let sy = lerp(p2[1], p1[1], points / maxPoints);
-
-                context.beginPath();
-                context.fillStyle = color;
-                context.globalCompositeOperation = brush.compositeOperation;
-                context.arc(sx, sy, brush.size * pressure, 0, Math.PI * 2);
-                context.fill();
-
-                points--;
-            }
-
-        } else {
-            context.beginPath();
-            context.fillStyle = color;
-            context.globalCompositeOperation = brush.compositeOperation;
-            context.arc(x, y, brush.size * pressure, 0, Math.PI * 2);
-            context.fill();
-        }
-
-        context.restore();
-
-        this.clear();
-        this.drawLayer(this.layer);
-    }
-
-    drawLayer(layer) {
-        if(layer instanceof Layer && !layer.hidden) {
-            if(layer.canvas.width + layer.canvas.height > 0) {
-                this.context.drawImage(layer.canvas, 0, 0);
-            }
-        }
-    }
-
-    clear() {
-        this.context.fillStyle = "white";
-        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    setActiveLayer(layer) {
-        this.layer = layer;
-        this.lastchange = Date.now();
-    }
-
     setBrush(brush) {
         this.brush = brush;
+        this.canvas.setBrush(brush);
     }
 
     lock() {

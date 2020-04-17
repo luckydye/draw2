@@ -127,14 +127,10 @@ export class Animate extends AnimateElement {
     }
 
     setup() {
-
-        this.createLayer();
-
         this.addTools(this.tools);
 
         this.canvas.addEventListener('canvas.draw', e => {
             e.preventDefault();
-            this.drawAllLayers();
         });
 
         this.brushsettings.addEventListener('tool.change', e => {
@@ -150,27 +146,15 @@ export class Animate extends AnimateElement {
         this.toolbar.addEventListener('tool.select', e => this.selectTool(e.tool));
 
         this.selectTool(this.tools[0]);
-        this.selectLayer(this.layers[0]);
-
-        const makeCursor = () => {
-            const anCanvas = this.shadowRoot.querySelector('an-canvas');
-            const brush = anCanvas.brush;
-            const size = Math.max(brush.size * anCanvas.scale, 1.5);
-            const url = genCursorImage(size);
-        
-            anCanvas.style.cursor = `url(${url}) ${size + 2} ${size + 2}, auto`;
-        }
-
-        this.canvas.addEventListener('canvas.scale', () => makeCursor());
-        this.brushsettings.addEventListener('tool.change', () => makeCursor());
-        this.toolbar.addEventListener('tool.select', () => makeCursor());
-        
-        makeCursor();
         
         this.canvas.addEventListener('canvas.draw', e => {
             this.stroke.push([e.x, e.y]);
         });
 
+        this.setupSocket();
+    }
+
+    setupSocket() {
         this.socket = new Socket();
 
         this.stroke = [];
@@ -181,7 +165,6 @@ export class Animate extends AnimateElement {
             img.onload = () => {
                 layer.setSize(img.width, img.height);
                 layer.context.drawImage(img, 0, 0);
-                this.drawAllLayers();
             }
             img.src = msg.canvas;
         }
@@ -199,11 +182,6 @@ export class Animate extends AnimateElement {
                     drawing: this.canvas.interacting
                 });
 
-                if(this.socket.isHost()) {
-                    const canv = this.canvas.canvas.toDataURL();
-                    this.socket.sendCanvas(canv);
-                }
-
                 this.stroke = [];
             }, 1000 / 30);
         });
@@ -213,7 +191,6 @@ export class Animate extends AnimateElement {
         const overlay = this.canvas.overlayContext;
 
         overlay.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
-
         overlay.lineWidth = 3;
 
         for(let usr of (users || [])) {
@@ -221,7 +198,7 @@ export class Animate extends AnimateElement {
                 if(usr.cursor) {
                     overlay.strokeStyle = `rgb(${usr.tool.color[0]}, ${usr.tool.color[1]}, ${usr.tool.color[2]})`;
                     overlay.beginPath();
-                    overlay.arc(usr.cursor[0], usr.cursor[1], 8, 0, 2 * Math.PI);
+                    overlay.arc(usr.cursor[0], usr.cursor[1], usr.tool.size, 0, 2 * Math.PI);
                     overlay.stroke();
                 }
     
@@ -244,19 +221,11 @@ export class Animate extends AnimateElement {
         this.brushsettings.onSelectTool(this.activeTool);
 
         if(tool instanceof Brush) {
-            this.canvas.brush = this.activeTool;
+            this.canvas.setBrush(this.activeTool);
             this.colorpicker.setRGB(this.activeTool.color);
         } else {
-            this.canvas.brush = null;
+            this.canvas.setBrush(null);
         }
-    }
-
-    selectLayer(layer) {
-        this.activeLayer = layer;
-
-        this.canvas.setActiveLayer(this.activeLayer);
-
-        this.drawAllLayers();
     }
 
     addTools(tools) {
@@ -265,28 +234,8 @@ export class Animate extends AnimateElement {
         }
     }
 
-    createLayer() {
-        const layer = new Layer();
-        this.layers.unshift(layer);
-        this.selectLayer(layer);
-        return layer;
-    }
-
-    drawAllLayers() {
-        this.canvas.clear();
-
-        const layers = this.layers.reverse();
-        
-        for(let layer of layers) {
-            this.canvas.drawLayer(layer);
-        }
-
-        this.layers.reverse();
-    }
-
     setResolution(width, height) {
         this.canvas.setSize(width, height);
-        this.drawAllLayers();
     }
 
     saveToFile() {
