@@ -56,7 +56,6 @@ export class Animate extends AnimateElement {
                     width: 100%;
                     height: 100%;
                     background: var(--canvas-background);
-                    padding: 0 100px 0 0;
                     box-sizing: border-box;
                 }
             </style>
