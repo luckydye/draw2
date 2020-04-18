@@ -192,6 +192,7 @@ export class AnimateCanvas extends AnimateElement {
             const dir = -Math.sign(e.deltaY);
             this.scaleCanvas(dir / 20);
             this.canvas.setBrush(this.brush);
+            e.preventDefault();
         }
 
         this.addEventListener('pointerdown', pointerDown);
@@ -251,6 +252,20 @@ export class AnimateCanvas extends AnimateElement {
         this.style.setProperty('--scale', this.scale);
 
         this.dispatchEvent(new CanvasScaleEvent());
+    }
+
+    // paint(posX, posY, r, color = [0, 0, 0], opacity = 1, hardness = 0.33, flow = 1, bubbleUp = true) {
+
+    drawStroke(stroke, brush) {
+        for(let point of stroke) {
+            this.canvas.paint(
+                point[0], 
+                point[1], 
+                brush.size, 
+                brush.color.map(v => v / 255),
+                brush.opacity);
+        }
+        this.canvas.endStroke(true);
     }
 
     setBrush(brush) {

@@ -166,11 +166,14 @@ class PenCanvas extends HTMLElement {
         this.shadowRoot.appendChild(this.canvas);
     }
 
-    endStroke() {
+    endStroke(prevent) {
+        if(!prevent) {
+            this.dispatchEvent(new Event('canvas.stroke'));
+        }
         this.currentStroke = [];
     }
 
-    paint(posX, posY, r, color = [0, 0, 0], opacity = 1, hardness = 0.33, flow = 1) {
+    paint(posX, posY, r, color = [0, 0, 0], opacity = 1, hardness = 0.33, flow = 1, bubbleUp = true) {
 
         const drawBrush = ([paintX, paintY]) => {
 
@@ -184,7 +187,7 @@ class PenCanvas extends HTMLElement {
                         this.context.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${opacity})`;
                         
                         this.context.globalAlpha = 1 - Math.pow(distance / radius, radius * hardness);
-                        this.context.globalAlpha -= Math.random() * (1 - flow);
+                        this.context.globalAlpha -= Math.max(Math.random() + 0.85, 1) * (1 - flow);
                         
                         this.context.fillRect(paintX + x, paintY + y, 1, 1);
                     }

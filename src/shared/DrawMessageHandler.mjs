@@ -12,8 +12,18 @@ export default class WatchMessageHandler extends MessageHandler {
         return Object.assign(super.messageTypes, {
             'ping': msg => { },
             'user.state': msg => this.filterRequest(msg, () => this.handleUserState(msg)),
-            'user.canvas': msg => this.filterRequest(msg, () => this.handleUserCanvas(msg)),
+            'stroke': msg => this.filterRequest(msg, () => this.handleStroke(msg)),
         });
+    }
+
+    handleStroke(msg) {
+        const room = this.getRoom(msg.socket.room);
+
+        if(room) {
+            const roomUser = room.userlist.get(msg.socket.uid);
+            const message = new Message('stroke', { stroke: msg.data, tool: roomUser.tool });
+            this.broadcast(room, message, (uid) => uid !== msg.socket.uid);
+        }
     }
 
     filterRequest(message, callback) {
@@ -26,26 +36,12 @@ export default class WatchMessageHandler extends MessageHandler {
         }
     }
 
-    handleUserCanvas(msg) {
-        const room = this.getRoom(msg.socket.room);
-        if(room) {
-            room.state.canvas = msg.data.canvas;
-        }
-    }
-
     handleUserState(msg) {
         const room = this.getRoom(msg.socket.room);
 
         const roomUser = room.userlist.get(msg.socket.uid);
         roomUser.cursor = msg.data.state.cursor;
         roomUser.tool = msg.data.state.tool;
-
-        const stroke = roomUser.stroke;
-        roomUser.stroke = msg.data.state.stroke;
-
-        if(stroke && stroke.length > 0 && msg.data.state.drawing) {
-            roomUser.stroke.unshift(stroke[stroke.length-1]);
-        }
 
         this.broadcast(room, new Message('room.state', room.getState()));
     }

@@ -11,17 +11,11 @@ export default class WatchRoom extends Room {
 
         this.userlist = new Map();
 
-        this.state = {
-            host: null,
-            hostonly: false,
-        }
+        this.state = {};
     }
 
     getState() {
-        const state = {
-            host: this.state.host,
-            hostonly: this.state.hostonly,
-        };
+        const state = {};
 
         state.users = [];
         for(let [uid, user] of this.userlist) {
@@ -29,7 +23,6 @@ export default class WatchRoom extends Room {
                 uid: uid,
                 tool: user.tool,
                 cursor: user.cursor,
-                stroke: user.stroke,
             });
         }
 
@@ -42,35 +35,10 @@ export default class WatchRoom extends Room {
             username: socket.username,
             socket: socket,
         });
-
-        if (!this.hostId || this.userlist.size < 1) {
-            this.hostId = socket.uid;
-        }
-
-        this.resolveHost(socket);
     }
 
     socketDisconnected(socket) {
         this.userlist.delete(socket.uid);
-        this.resolveHost(socket);
-    }
-
-    resolveHost(socket) {
-        // find another host
-        const currentHost = this.userlist.get(this.hostId);
-        if (!currentHost) {
-            const next = this.userlist.keys().next().value;
-            this.hostId = next;
-
-            const host = this.userlist.get(this.hostId);
-
-            if (host) {
-                const hostSocket = host.socket;
-                console.log("Found new host from " + hostSocket.uid + " to " + next + " for " + this.id);
-            }
-        }
-
-        this.state.host = this.hostId;
     }
 
 }

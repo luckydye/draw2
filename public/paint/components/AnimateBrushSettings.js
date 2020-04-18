@@ -91,7 +91,7 @@ export class AnimateBrushSettings extends AnimateElement {
 
         const change = {
             size: sizeInput.valueAsNumber,
-            opacity: opacityInput.valueAsNumber / (sizeInput.valueAsNumber / 10)
+            opacity: opacityInput.valueAsNumber
         };
 
         this.dispatchEvent(new ToolChangeEvent(change));

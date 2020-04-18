@@ -3,7 +3,6 @@ import { AnimateCanvas } from './components/AnimateCanvas.js';
 import { AnimateToolbar } from './components/AnimateToolbar.js';
 import { AnimateColorPicker } from './components/AnimateColorPicker.js';
 import { AnimateBrushSettings } from './components/AnimateBrushSettings.js';
-import { Layer } from './Layer.js';
 import { Brush } from './tools/Brush.js';
 import { Eraser } from './tools/Eraser.js';
 import { html } from '/node_modules/lit-html/lit-html.js';
@@ -14,37 +13,6 @@ customElements.define('an-toolbar', AnimateToolbar);
 customElements.define('an-colorpicker', AnimateColorPicker);
 customElements.define('an-brushsettings', AnimateBrushSettings);
 
-function genCursorImage(size) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = (size * 2) + 4;
-    canvas.height = (size * 2) + 4;
-
-    ctx.lineWidth = 0.5;
-
-    ctx.strokeStyle = "rgba(51, 51, 51, 0.51)";
-    ctx.arc(canvas.width / 2, canvas.height / 2, size, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = "#eee";
-    ctx.arc(canvas.width / 2, canvas.height / 2, size + 0.5, 0, Math.PI * 2);
-    ctx.stroke();
-
-    return canvas.toDataURL();
-}
-
-class State {
-    constructor(data) {
-        this.data = data;
-    }
-    restore() {
-        if(this.data.buffer) {
-            this.data.layer.restoreBuffer(this.data.buffer);
-        }
-    }
-}
-
 export class Animate extends AnimateElement {
 
     static template() {
@@ -52,11 +20,11 @@ export class Animate extends AnimateElement {
             <style>
                 .interface {
                     display: grid;
-                    grid-template-columns: auto 1fr auto auto;
+                    grid-template-columns: auto auto 1fr auto;
                     align-content: flex-start;
                     align-items: flex-start;
                     justify-content: flex-start;
-                    grid-gap: 15px;
+                    grid-gap: 20px;
                     z-index: 100;
                     padding: 20px;
                     box-sizing: border-box;
@@ -94,9 +62,9 @@ export class Animate extends AnimateElement {
             </style>
             <div class="interface">
                 <an-toolbar></an-toolbar>
+                <an-brushsettings></an-brushsettings>
                 <div class="canvas-title"></div>
                 <an-colorpicker></an-colorpicker>
-                <an-brushsettings></an-brushsettings>
             </div>
             <an-canvas id="viewport"></an-canvas>
         `;
@@ -146,18 +114,20 @@ export class Animate extends AnimateElement {
         this.toolbar.addEventListener('tool.select', e => this.selectTool(e.tool));
 
         this.selectTool(this.tools[0]);
-        
-        this.canvas.addEventListener('canvas.draw', e => {
-            this.stroke.push([e.x, e.y]);
-        });
 
         this.setupSocket();
     }
 
     setupSocket() {
         this.socket = new Socket();
+        
+        this.canvas.canvas.addEventListener('canvas.stroke', e => {
+            this.socket.emit('stroke', this.canvas.canvas.currentStroke);
+        });
 
-        this.stroke = [];
+        this.socket.client.on('stroke', ({ stroke, tool }) => {
+            this.canvas.drawStroke(stroke, tool);
+        })
 
         this.socket.onInitalJoin = msg => {
             const layer = this.createLayer();
@@ -178,11 +148,8 @@ export class Animate extends AnimateElement {
                 this.socket.sendUpdate({
                     cursor: this.canvas.cursor,
                     tool: this.activeTool,
-                    stroke: this.stroke,
-                    drawing: this.canvas.interacting
                 });
 
-                this.stroke = [];
             }, 1000 / 30);
         });
     }
@@ -200,15 +167,6 @@ export class Animate extends AnimateElement {
                     overlay.beginPath();
                     overlay.arc(usr.cursor[0], usr.cursor[1], usr.tool.size, 0, 2 * Math.PI);
                     overlay.stroke();
-                }
-    
-                if(usr.stroke.length > 0) {
-                    this.canvas.currentLine = []
-                    this.canvas.brush = usr.tool;
-                    for(let pos of usr.stroke) {
-                        this.canvas.draw(pos[0], pos[1]);
-                    }
-                    this.canvas.brush = this.activeTool;
                 }
             }
         }
