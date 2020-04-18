@@ -2,7 +2,7 @@ import { MessageHandler, Message } from '@uncut/hotel';
 import RoomStateMessage from '@uncut/hotel/src/messages/RoomStateMessage.mjs';
 import WatchRoom from './DrawRoom.mjs';
 
-export default class WatchMessageHandler extends MessageHandler {
+export default class DrawMessageHandler extends MessageHandler {
 
     static get Room() {
         return WatchRoom;
@@ -16,16 +16,6 @@ export default class WatchMessageHandler extends MessageHandler {
         });
     }
 
-    handleStroke(msg) {
-        const room = this.getRoom(msg.socket.room);
-
-        if(room) {
-            const roomUser = room.userlist.get(msg.socket.uid);
-            const message = new Message('stroke', { stroke: msg.data, tool: roomUser.tool });
-            this.broadcast(room, message, (uid) => uid !== msg.socket.uid);
-        }
-    }
-
     filterRequest(message, callback) {
         const room = this.getRoom(message.socket.room);
 
@@ -33,6 +23,18 @@ export default class WatchMessageHandler extends MessageHandler {
             if (!room.state.hostonly || (room.state.hostonly && room.state.host === message.socket.uid)) {
                 callback();
             }
+        }
+    }
+
+    handleStroke(msg) {
+        const room = this.getRoom(msg.socket.room);
+
+        if(room) {
+            const roomUser = room.userlist.get(msg.socket.uid);
+            const stroke = { stroke: msg.data, tool: roomUser.tool };
+            room.handleStroke(stroke);
+            const message = new Message('stroke', stroke);
+            this.broadcast(room, message, (uid) => uid !== msg.socket.uid);
         }
     }
 
@@ -56,9 +58,12 @@ export default class WatchMessageHandler extends MessageHandler {
 
         room.socketConnected(message.socket);
 
-        message.reply(new Message('join', { id: message.socket.uid }));
+        message.reply(new Message('join', { 
+            id: message.socket.uid,
+            canvas: room.history
+        }));
+
         message.reply(new Message('room.state', room.getState()));
-        message.reply(new Message('room.canvas', { canvas: room.state.canvas }));
     }
 
     handleLeaveMessage(message) {

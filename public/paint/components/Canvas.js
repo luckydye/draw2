@@ -71,6 +71,13 @@ class PenCanvas extends HTMLElement {
             color: [0, 0, 0],
             opacity: 0.5,
         };
+
+        this.brushCanvas = new OffscreenCanvas(50, 50);
+        this.brushContext = this.brushCanvas.getContext("2d", { 
+            preserveDrawingBuffer: true,
+            alpha: true,
+            antialias: true
+        });
         
         this.mouseControls();
     }
@@ -197,6 +204,10 @@ class PenCanvas extends HTMLElement {
         this.currentStroke = [];
     }
 
+    updateBrush() {
+
+    }
+
     paint(posX, posY, r, color = [0, 0, 0], opacity = 1, hardness = 0.33, flow = 1, strokeArr) {
 
         let stroke = this.currentStroke;
@@ -205,21 +216,23 @@ class PenCanvas extends HTMLElement {
             stroke = strokeArr;
         }
 
-        const drawBrush = ([paintX, paintY]) => {
+        const drawBrush = () => {
+
+            this.brushContext.clearRect(0, 0, this.brushCanvas.width, this.brushCanvas.height);
 
             let radius = r;
 
             for(let x = -radius; x < radius; x++) {
                 for(let y = -radius; y < radius; y++) {
-                    const distance = dist(paintX, paintY, paintX + x, paintY + y);
+                    const distance = dist(0, 0, x, y);
 
                     if(distance < radius) {
-                        this.context.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${opacity})`;
+                        this.brushContext.globalAlpha = 1 - Math.pow(distance / radius, radius * hardness);
+                        this.brushContext.globalAlpha -= Math.max(Math.random() + 0.85, 1) * (1 - flow);
+
+                        this.brushContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${opacity})`;
                         
-                        this.context.globalAlpha = 1 - Math.pow(distance / radius, radius * hardness);
-                        this.context.globalAlpha -= Math.max(Math.random() + 0.85, 1) * (1 - flow);
-                        
-                        this.context.fillRect(paintX + x, paintY + y, 1, 1);
+                        this.brushContext.fillRect(x + radius, y + radius, 1, 1);
                     }
                 }
             }
@@ -239,11 +252,13 @@ class PenCanvas extends HTMLElement {
     
             let stepDist = Math.sqrt(Math.pow(prev[2] - curr[0], 2) + Math.pow(prev[3] - curr[1], 2));
             stepDist = stepDist / r;
+
+            drawBrush();
     
             for(let i = 0; i < stepDist; i++) {
                 const step = bezier3(i / stepDist, prev, lerp, curr);
                 // draw brush pixels
-                drawBrush(step);
+                this.context.drawImage(this.brushCanvas, step[0] - r, step[1] - r);
             }
         }
 

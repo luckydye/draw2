@@ -172,6 +172,10 @@ export default class SocketClient {
 			'join': msg => {
 				this.id = msg.id;
 				console.log('Joined');
+				
+				this.onInitalJoin({
+					canvas: msg.canvas
+				})
 			},
 
 			'message': msg => {
@@ -181,14 +185,6 @@ export default class SocketClient {
 			'room.state': msg => {
 				this.host = msg.host;
 				this.roomState = msg;
-			},
-
-			'room.canvas': msg => {
-				if(msg.canvas) {
-					this.onInitalJoin({
-						canvas: msg.canvas
-					})
-				}
 			},
 		}
 

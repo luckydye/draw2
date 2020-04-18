@@ -130,13 +130,12 @@ export class Animate extends AnimateElement {
         })
 
         this.socket.onInitalJoin = msg => {
-            const layer = this.createLayer();
-            const img = new Image();
-            img.onload = () => {
-                layer.setSize(img.width, img.height);
-                layer.context.drawImage(img, 0, 0);
+            const canvas = msg.canvas;
+            if(canvas) {
+                for(let action of canvas) {
+                    this.canvas.drawStroke(action.stroke, action.tool);
+                }
             }
-            img.src = msg.canvas;
         }
         
         this.socket.connect().then(() => {

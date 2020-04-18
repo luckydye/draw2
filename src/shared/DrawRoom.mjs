@@ -10,8 +10,12 @@ export default class WatchRoom extends Room {
         super();
 
         this.userlist = new Map();
-
         this.state = {};
+        this.history = [];
+    }
+
+    handleStroke(stroke) {
+        this.history.push(stroke);
     }
 
     getState() {
@@ -30,7 +34,6 @@ export default class WatchRoom extends Room {
     }
 
     socketConnected(socket) {
-
         this.userlist.set(socket.uid, {
             username: socket.username,
             socket: socket,
