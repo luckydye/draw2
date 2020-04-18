@@ -151,6 +151,30 @@ class PenCanvas extends HTMLElement {
             this.endStroke();
             this.draging = false;
         })
+
+        this.addEventListener('pointerleave', () => {
+            this.endStroke();
+        })
+
+        this.addEventListener('pointercancel', () => {
+            this.endStroke();
+            this.draging = false;
+        })
+
+        window.addEventListener('pointerleave', () => {
+            this.endStroke();
+            this.draging = false;
+        })
+
+        window.addEventListener('pointercancel', () => {
+            this.endStroke();
+            this.draging = false;
+        })
+
+        window.addEventListener('pointerout', () => {
+            this.endStroke();
+            this.draging = false;
+        })
         
         this.renderCurosr(this.brush.size);
     }
@@ -173,7 +197,13 @@ class PenCanvas extends HTMLElement {
         this.currentStroke = [];
     }
 
-    paint(posX, posY, r, color = [0, 0, 0], opacity = 1, hardness = 0.33, flow = 1, bubbleUp = true) {
+    paint(posX, posY, r, color = [0, 0, 0], opacity = 1, hardness = 0.33, flow = 1, strokeArr) {
+
+        let stroke = this.currentStroke;
+
+        if(strokeArr) {
+            stroke = strokeArr;
+        }
 
         const drawBrush = ([paintX, paintY]) => {
 
@@ -196,7 +226,7 @@ class PenCanvas extends HTMLElement {
         }
 
         // interpolate stroke
-        const prev = this.currentStroke[0];
+        const prev = stroke[0];
         let curr = [posX, posY, posX, posY];
 
         if(prev) {
@@ -217,7 +247,7 @@ class PenCanvas extends HTMLElement {
             }
         }
 
-        this.currentStroke.unshift(curr);
+        stroke.unshift(curr);
     }
 
 }
