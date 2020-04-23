@@ -128,13 +128,16 @@ export class Animate extends AnimateElement {
             this.canvas.drawStroke(stroke, tool);
         })
 
-        this.socket.onInitalJoin = msg => {
-            const canvas = msg.canvas;
-            if(canvas) {
-                for(let action of canvas) {
-                    this.canvas.drawStroke(action.stroke, action.tool);
-                }
+        this.socket.getCanvas = () => {
+            return this.canvas.canvas.toDataURL('image/png');
+        }
+
+        this.socket.setCanvas = (dataUrl) => {
+            const img = new Image();
+            img.onload = () => {
+                this.canvas.canvas.context.drawImage(img, 0, 0);
             }
+            img.src = dataUrl;
         }
         
         this.socket.connect().then(() => {

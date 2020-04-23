@@ -173,13 +173,20 @@ export default class SocketClient {
 				this.id = msg.id;
 				console.log('Joined');
 				
-				this.onInitalJoin({
-					canvas: msg.canvas
-				})
+				this.onInitalJoin()
 			},
 
 			'message': msg => {
 				console.log(msg);
+			},
+
+			'canvas.request': msg => {
+				const canvas = this.getCanvas();
+				this.client.emit('canvas.initial', { canvas });
+			},
+
+			'canvas.initial': msg => {
+				this.setCanvas(msg.canvas);
 			},
 
 			'room.state': msg => {
@@ -191,8 +198,21 @@ export default class SocketClient {
 		this.initListeners(this.events);
 	}
 
-	onInitalJoin(msg) {
+	onInitalJoin() {
+		this.client.emit('canvas.request');
+	}
 
+	getCanvas() {
+
+	}
+
+	setCanvas() {
+
+	}
+
+	sendCanvas() {
+		const canv = this.canvas.canvas.toDataURL();
+		this.socket.sendCanvas(canv);
 	}
 
 	initListeners(events) {

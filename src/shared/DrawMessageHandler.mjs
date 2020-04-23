@@ -12,6 +12,8 @@ export default class DrawMessageHandler extends MessageHandler {
         return Object.assign(super.messageTypes, {
             'ping': msg => { },
             'user.state': msg => this.filterRequest(msg, () => this.handleUserState(msg)),
+            'canvas.request': msg => this.filterRequest(msg, () => this.handleUserCanvasRequest(msg)),
+            'canvas.initial': msg => this.filterRequest(msg, () => this.handleUserCanvasPush(msg)),
             'stroke': msg => this.filterRequest(msg, () => this.handleStroke(msg)),
         });
     }
@@ -46,6 +48,18 @@ export default class DrawMessageHandler extends MessageHandler {
         roomUser.tool = msg.data.state.tool;
 
         this.broadcast(room, new Message('room.state', room.getState()));
+    }
+
+    handleUserCanvasRequest(msg) {
+        const room = this.getRoom(msg.socket.room);
+        const firstUser = [...room.userlist][0][1];
+
+        firstUser.socket.send(JSON.stringify({ type: 'canvas.request' }));
+    }
+
+    handleUserCanvasPush(msg) {
+        const room = this.getRoom(msg.socket.room);
+        this.broadcast(room, new Message('canvas.initial', { canvas: msg.data.canvas } ));
     }
 
     handleJoinMessage(message) {

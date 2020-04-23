@@ -256,9 +256,6 @@ export class AnimateCanvas extends AnimateElement {
 
     drawStroke(stroke, brush) {
         const arr = [];
-
-        console.log(stroke);
-
         for(let point of stroke) {
             this.canvas.paint(
                 point[0], 
