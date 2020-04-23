@@ -198,9 +198,7 @@ class PenCanvas extends HTMLElement {
     }
 
     endStroke(prevent) {
-        if(!prevent) {
-            this.dispatchEvent(new Event('canvas.stroke'));
-        }
+        this.dispatchEvent(new Event('canvas.stroke'));
         this.currentStroke = [];
     }
 
