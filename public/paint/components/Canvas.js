@@ -72,7 +72,9 @@ class PenCanvas extends HTMLElement {
             opacity: 0.5,
         };
 
-        this.brushCanvas = new OffscreenCanvas(50, 50);
+        this.brushCanvas = document.createElement('canvas');
+        this.brushCanvas.width = 50;
+        this.brushCanvas.height = 50;
         this.brushContext = this.brushCanvas.getContext("2d", { 
             preserveDrawingBuffer: true,
             alpha: true,
